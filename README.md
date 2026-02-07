@@ -4,13 +4,13 @@ An intelligent travel planning assistant that helps users find flights, hotels, 
 
 ## Project Overview
 
-**Voyager AI** is an 8-week collaborative project built by a 4-person team with zero budget. The application combines a modern chat interface with AI-powered travel planning capabilities, leveraging the LangGraph agent framework and multiple travel APIs.
+**Voyager AI** is a collaborative project built by a 4-person team with zero budget. The application combines a modern chat interface with AI-powered travel planning capabilities, leveraging the LangGraph agent framework and multiple travel APIs.
 
 ### Team Structure
 
 | Role | Responsibility | Status |
 |------|---------------|--------|
-| **Full-Stack Developer** (You) | Frontend UI + Backend API + Database | ✅ **COMPLETE** |
+| **Full-Stack Developer** | Frontend UI + Backend API + Database | ✅ **COMPLETE** |
 | **Agent Architect** | LangGraph multi-agent system | 🚧 Pending |
 | **API Integration Engineer** | 6 travel APIs (flights, hotels, weather, etc.) | 🚧 Pending |
 | **DevOps & Quality Engineer** | Docker, CI/CD, production deployment | 🚧 Pending |
