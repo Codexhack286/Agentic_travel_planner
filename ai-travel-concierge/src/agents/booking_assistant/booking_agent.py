@@ -5,12 +5,12 @@ import logging
 from typing import Dict, Any
 from datetime import datetime
 
-from langchain_openai import ChatOpenAI
-from langchain.agents import AgentExecutor, create_openai_functions_agent
+from langchain_groq import ChatGroq
+from langchain_classic.agents import AgentExecutor, create_openai_tools_agent
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 from src.graphs.state.conversation_state import ConversationState
-from src.tools.external_apis.booking_tool import BookingTool
+from src.tools.external_apis import BookingTool
 
 logger = logging.getLogger(__name__)
 
@@ -29,8 +29,8 @@ class BookingAgent:
     
     def __init__(self, config: Dict[str, Any]):
         self.config = config
-        self.llm = ChatOpenAI(
-            model=config.get("model_name", "gpt-4-turbo-preview"),
+        self.llm = ChatGroq(
+            model=config.get("model_name", "openai/gpt-oss-120b"),
             temperature=0.3  # Lower temperature for booking accuracy
         )
         
@@ -73,7 +73,7 @@ class BookingAgent:
             MessagesPlaceholder(variable_name="agent_scratchpad"),
         ])
         
-        agent = create_openai_functions_agent(self.llm, self.tools, prompt)
+        agent = create_openai_tools_agent(self.llm, self.tools, prompt)
         return AgentExecutor(agent=agent, tools=self.tools, verbose=True)
     
     async def process_booking(self, state: ConversationState) -> Dict[str, Any]:

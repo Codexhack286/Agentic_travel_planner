@@ -70,7 +70,7 @@ class VisaRequirementTool(BaseTravelAPITool):
     def __init__(self, **kwargs):
         """Initialize Visa tool with RapidAPI key from environment."""
         super().__init__(**kwargs)
-        self._rapidapi_key = os.getenv("PASSPORT_API_KEY") or ""
+        self._rapidapi_key = os.environ.get("PASSPORT_API_KEY") or ""
 
         if not self._rapidapi_key:
             raise ValueError(

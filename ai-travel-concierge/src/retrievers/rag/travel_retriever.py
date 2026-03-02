@@ -4,8 +4,8 @@ RAG-based Travel Knowledge Retriever.
 import logging
 from typing import List, Dict, Any, Optional
 
-from langchain_openai import OpenAIEmbeddings
-from langchain_community.vectorstores import Chroma
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_chroma import Chroma
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
@@ -26,8 +26,8 @@ class TravelRetriever:
         self.config = config
         
         # Initialize embeddings
-        self.embeddings = OpenAIEmbeddings(
-            model=config.get("embedding_model", "text-embedding-3-small")
+        self.embeddings = HuggingFaceEmbeddings(
+            model_name=config.get("embedding_model", "all-MiniLM-L6-v2")
         )
         
         # Initialize or load vector store
@@ -242,7 +242,7 @@ class TravelRetriever:
             # Handle list of interests
             formatted_filter["interests"] = {"$in": filters["interests"]}
         
-        return formatted_filter
+        return formatted_filter if formatted_filter else None
     
     async def hybrid_search(
         self,

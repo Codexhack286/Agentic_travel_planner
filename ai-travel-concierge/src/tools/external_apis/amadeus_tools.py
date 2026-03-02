@@ -27,8 +27,8 @@ class AmadeusAuthMixin:
         if token and expiry and datetime.now() < expiry:
             return token
 
-        api_key = os.getenv("AMADEUS_API_KEY")
-        api_secret = os.getenv("AMADEUS_API_SECRET")
+        api_key = os.environ.get("AMADEUS_API_KEY")
+        api_secret = os.environ.get("AMADEUS_API_SECRET")
 
         if not api_key or not api_secret:
             raise ValueError("Amadeus API credentials not found in environment variables")

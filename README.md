@@ -11,8 +11,8 @@ An intelligent travel planning assistant that helps users find flights, hotels, 
 | Role | Responsibility | Status |
 |------|---------------|--------|
 | **Full-Stack Developer** | Frontend UI + Backend API + Database | ✅ **COMPLETE** |
-| **Agent Architect** | LangGraph multi-agent system | 🚧 Pending |
-| **API Integration Engineer** | 6 travel APIs (flights, hotels, weather, etc.) | 🚧 Pending |
+| **Agent Architect** | LangGraph multi-agent system | ✅ **COMPLETE** |
+| **API Integration Engineer** | 6 travel APIs (flights, hotels, weather, etc.) | ✅ **COMPLETE** |
 | **DevOps & Quality Engineer** | Docker, CI/CD, production deployment | 🚧 Pending |
 
 ## Tech Stack
@@ -178,9 +178,6 @@ Agentic_travel_planner/
 - **Dark Mode**: System-aware theme with manual toggle
 - **Welcome Conversation**: Helpful onboarding for new users
 - **Comprehensive Tests**: 30+ tests across frontend and backend
-
-### Pending 🚧
-
 - **LangGraph Agent**: Multi-agent orchestration system (Agent Architect)
 - **Travel APIs**: Integration with 6 travel APIs (API Integration Engineer)
   - Flight search (Amadeus/Skyscanner)
@@ -189,6 +186,9 @@ Agentic_travel_planner/
   - Currency conversion (ExchangeRate-API)
   - Attractions (Google Places)
   - Itinerary planning (custom logic)
+
+### Pending 🚧
+
 - **Production Deployment**: Docker, CI/CD, monitoring (DevOps Engineer)
 
 ## Development Workflow

@@ -2,16 +2,15 @@
 Travel Planner Agent - Creates personalized itineraries.
 """
 import logging
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Tuple
 from datetime import datetime, timedelta
 
-from langchain_openai import ChatOpenAI
-from langchain.agents import AgentExecutor, create_openai_functions_agent
+from langchain_groq import ChatGroq
+from langchain_classic.agents import AgentExecutor, create_openai_tools_agent
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 from src.graphs.state.conversation_state import ConversationState, Itinerary
-from src.tools.external_apis.places_tool import PlacesTool
-from src.tools.external_apis.weather_tool import WeatherTool
+from src.tools.external_apis import PlacesTool, WeatherTool
 
 logger = logging.getLogger(__name__)
 
@@ -26,8 +25,8 @@ class TravelPlannerAgent:
     
     def __init__(self, config: Dict[str, Any]):
         self.config = config
-        self.llm = ChatOpenAI(
-            model=config.get("model_name", "gpt-4-turbo-preview"),
+        self.llm = ChatGroq(
+            model=config.get("model_name", "openai/gpt-oss-120b"),
             temperature=config.get("temperature", 0.7)
         )
         
@@ -72,10 +71,10 @@ class TravelPlannerAgent:
             MessagesPlaceholder(variable_name="agent_scratchpad"),
         ])
         
-        agent = create_openai_functions_agent(self.llm, self.tools, prompt)
+        agent = create_openai_tools_agent(self.llm, self.tools, prompt)
         return AgentExecutor(agent=agent, tools=self.tools, verbose=True)
     
-    async def create_itinerary(self, state: ConversationState) -> List[Itinerary]:
+    async def create_itinerary(self, state: ConversationState) -> Tuple[List[Itinerary], str]:
         """
         Create a detailed travel itinerary based on state.
         
@@ -83,7 +82,7 @@ class TravelPlannerAgent:
             state: Current conversation state
         
         Returns:
-            List of daily itinerary items
+            Tuple of (List of daily itinerary items, raw agent output string)
         """
         logger.info("Creating travel itinerary")
         
@@ -105,7 +104,7 @@ class TravelPlannerAgent:
         )
         
         logger.info(f"Created {len(itinerary)} day itinerary")
-        return itinerary
+        return itinerary, result["output"]
     
     def _format_planner_input(
         self,
@@ -139,8 +138,8 @@ Please create a day-by-day itinerary with specific recommendations for activitie
     def _parse_itinerary(
         self,
         agent_output: str,
-        start_date: datetime,
-        duration_days: int
+        start_date: Any,
+        duration_days: Any
     ) -> List[Itinerary]:
         """
         Parse agent output into structured itinerary format.
@@ -149,6 +148,29 @@ Please create a day-by-day itinerary with specific recommendations for activitie
         parsing or ask the agent to return structured JSON.
         """
         itinerary = []
+        
+        # Ensure duration_days is an integer
+        if isinstance(duration_days, str):
+            try:
+                duration_days = int(duration_days)
+            except ValueError:
+                duration_days = 1
+        elif not isinstance(duration_days, int):
+            duration_days = 1
+            
+        # Ensure start_date is a datetime object
+        if isinstance(start_date, str):
+            try:
+                # Try parsing ISO format
+                start_date = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+            except ValueError:
+                # Try common formats
+                try:
+                    start_date = datetime.strptime(start_date, "%Y-%m-%d")
+                except ValueError:
+                    start_date = datetime.now()
+        elif not isinstance(start_date, datetime):
+            start_date = datetime.now()
         
         for day_num in range(1, duration_days + 1):
             current_date = start_date + timedelta(days=day_num - 1)

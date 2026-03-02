@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.engine import get_db
 from app.db import crud
 from app.models.schemas import ChatRequest
-from app.services.mock_agent import generate_mock_response
+from app.services.real_agent import generate_real_response
 
 router = APIRouter()
 
@@ -40,7 +40,7 @@ async def chat(
         full_content = ""
         tool_results = []
 
-        async for chunk in generate_mock_response(body.message):
+        async for chunk in generate_real_response(body.message, str(uid)):
             yield chunk
 
             # Parse the SSE chunk to capture content for storage

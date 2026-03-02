@@ -8,8 +8,8 @@ from langchain.tools import BaseTool
 class FlightsTool(BaseTool):
     """Tool for searching and booking flights."""
     
-    name = "flights_search"
-    description = """Search for flight options based on criteria.
+    name: str = "flights_search"
+    description: str = """Search for flight options based on criteria.
     Input should include: origin, destination, departure_date, return_date, passengers.
     Returns available flights with pricing and schedules."""
     
@@ -29,8 +29,8 @@ class FlightsTool(BaseTool):
 class HotelsTool(BaseTool):
     """Tool for searching and booking hotels."""
     
-    name = "hotels_search"
-    description = """Search for hotel accommodations.
+    name: str = "hotels_search"
+    description: str = """Search for hotel accommodations.
     Input should include: destination, check_in, check_out, guests, preferences.
     Returns available hotels with pricing and amenities."""
     
@@ -50,8 +50,8 @@ class HotelsTool(BaseTool):
 class ActivitiesTool(BaseTool):
     """Tool for finding activities and experiences."""
     
-    name = "activities_search"
-    description = """Search for activities, tours, and experiences.
+    name: str = "activities_search"
+    description: str = """Search for activities, tours, and experiences.
     Input should include: destination, interests, dates, budget.
     Returns available activities with descriptions and booking info."""
     
@@ -71,8 +71,8 @@ class ActivitiesTool(BaseTool):
 class PlacesTool(BaseTool):
     """Tool for finding places of interest."""
     
-    name = "places_search"
-    description = """Search for places, attractions, and points of interest.
+    name: str = "places_search"
+    description: str = """Search for places, attractions, and points of interest.
     Input should include: destination, category (restaurant, attraction, etc.), preferences.
     Returns places with details, ratings, and location info."""
     
@@ -92,8 +92,8 @@ class PlacesTool(BaseTool):
 class WeatherTool(BaseTool):
     """Tool for checking weather conditions."""
     
-    name = "weather_check"
-    description = """Check weather forecast for a location and date range.
+    name: str = "weather_check"
+    description: str = """Check weather forecast for a location and date range.
     Input should include: destination, start_date, end_date.
     Returns weather forecast with temperatures and conditions."""
     
@@ -113,8 +113,8 @@ class WeatherTool(BaseTool):
 class BookingTool(BaseTool):
     """Tool for processing bookings."""
     
-    name = "process_booking"
-    description = """Process a travel booking (flight, hotel, activity).
+    name: str = "process_booking"
+    description: str = """Process a travel booking (flight, hotel, activity).
     Input should include: booking_type, booking_details, payment_info.
     Returns booking confirmation with reference number."""
     

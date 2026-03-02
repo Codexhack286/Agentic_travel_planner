@@ -80,3 +80,6 @@ site/
 *.temp
 tmp/
 temp/
+
+# Graphs
+travel_graph*.png

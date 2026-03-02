@@ -22,26 +22,39 @@ parsed = urlparse(DATABASE_URL)
 query_params = parse_qs(parsed.query)
 query_params.pop("sslmode", None)
 query_params.pop("channel_binding", None)
-clean_query = urlencode(query_params, doseq=True)
-clean_url = urlunparse((
-    parsed.scheme,
-    parsed.netloc,
-    parsed.path,
-    parsed.params,
-    clean_query,
-    parsed.fragment
-))
+is_sqlite = parsed.scheme.startswith("sqlite")
 
-engine = create_async_engine(
-    clean_url,
-    echo=False,
-    pool_size=5,
-    max_overflow=10,
-    pool_pre_ping=True,
-    connect_args={
-        "ssl": "require",
-    },
-)
+if is_sqlite:
+    clean_url = DATABASE_URL
+else:
+    clean_query = urlencode(query_params, doseq=True)
+    clean_url = urlunparse((
+        parsed.scheme,
+        parsed.netloc,
+        parsed.path,
+        parsed.params,
+        clean_query,
+        parsed.fragment
+    ))
+
+is_sqlite = parsed.scheme.startswith("sqlite")
+
+if is_sqlite:
+    engine = create_async_engine(
+        clean_url,
+        echo=False,
+    )
+else:
+    engine = create_async_engine(
+        clean_url,
+        echo=False,
+        pool_size=5,
+        max_overflow=10,
+        pool_pre_ping=True,
+        connect_args={
+            "ssl": "require",
+        },
+    )
 
 async_session = async_sessionmaker(engine, expire_on_commit=False)
 

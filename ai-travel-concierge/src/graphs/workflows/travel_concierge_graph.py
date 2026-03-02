@@ -56,6 +56,14 @@ class TravelConciergeGraph:
         workflow.add_node("answer_question", self.nodes.answer_question_node)
         workflow.add_node("clarify", self.nodes.clarification_node)
         
+        # Add new external API nodes
+        workflow.add_node("flight_search", self.nodes.flight_search_node)
+        workflow.add_node("hotel_search", self.nodes.hotel_search_node)
+        workflow.add_node("weather_check", self.nodes.weather_check_node)
+        workflow.add_node("country_info", self.nodes.country_info_node)
+        workflow.add_node("currency_conversion", self.nodes.currency_conversion_node)
+        workflow.add_node("visa_requirement", self.nodes.visa_requirement_node)
+        
         # Set entry point
         workflow.set_entry_point("classify_intent")
         
@@ -82,12 +90,24 @@ class TravelConciergeGraph:
                 "recommend": "recommend",
                 "book": "book",
                 "answer_question": "answer_question",
-                "clarify": "clarify"
+                "clarify": "clarify",
+                "flight_search": "flight_search",
+                "hotel_search": "hotel_search",
+                "weather_check": "weather_check",
+                "country_info": "country_info",
+                "currency_conversion": "currency_conversion",
+                "visa_requirement": "visa_requirement"
             }
         )
         
         # After each action node, check if we should continue
-        for node in ["plan_trip", "recommend", "book", "answer_question"]:
+        action_nodes = [
+            "plan_trip", "recommend", "book", "answer_question",
+            "flight_search", "hotel_search", "weather_check", 
+            "country_info", "currency_conversion", "visa_requirement"
+        ]
+        
+        for node in action_nodes:
             workflow.add_conditional_edges(
                 node,
                 self.edges.should_continue,
@@ -97,15 +117,8 @@ class TravelConciergeGraph:
                 }
             )
         
-        # After clarification, re-classify intent or end
-        workflow.add_conditional_edges(
-            "clarify",
-            self.edges.route_after_clarification,
-            {
-                "classify_intent": "classify_intent",
-                "end": END
-            }
-        )
+        # After clarification, end execution to wait for user's response
+        workflow.add_edge("clarify", END)
         
         # Compile the graph with memory
         memory = MemorySaver()

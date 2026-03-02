@@ -13,10 +13,10 @@ class Settings(BaseSettings):
     """Application settings with environment variable support."""
     
     # LLM Settings
-    openai_api_key: str = ""
+    groq_api_key: str = ""
     anthropic_api_key: str = ""
     google_api_key: str = ""
-    model_name: str = "gpt-4-turbo-preview"
+    model_name: str = "openai/gpt-oss-120b"
     temperature: float = 0.7
     max_tokens: int = 4000
     
@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     # Vector Database Settings
     chroma_persist_directory: str = "./data/vector_db"
     collection_name: str = "travel_knowledge"
-    embedding_model: str = "text-embedding-3-small"
+    embedding_model: str = "all-MiniLM-L6-v2"
     
     # RAG Settings
     chunk_size: int = 1000
@@ -64,6 +64,7 @@ class Settings(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = False
+        extra = "ignore"
 
 
 def load_config() -> Dict[str, Any]:
@@ -73,8 +74,8 @@ def load_config() -> Dict[str, Any]:
     Returns:
         Dictionary with configuration settings
     """
-    # Load .env file
-    env_path = Path(__file__).parent.parent.parent / ".env"
+    # Load .env file from the outermost project root
+    env_path = Path(__file__).parent.parent.parent.parent / ".env"
     if env_path.exists():
         load_dotenv(env_path)
     
@@ -128,7 +129,7 @@ def validate_config(config: Dict[str, Any]) -> bool:
         ValueError: If required configuration is missing
     """
     required_keys = [
-        "openai_api_key",
+        "groq_api_key",
         "model_name",
     ]
     

@@ -64,7 +64,7 @@ class UnsplashImageTool(BaseTravelAPITool):
     def __init__(self, **kwargs):
         """Initialize Unsplash tool with API key from environment."""
         super().__init__(**kwargs)
-        self._access_key = os.getenv("UNSPLASH_ACCESS_KEY")
+        self._access_key = os.environ.get("UNSPLASH_ACCESS_KEY")
         if not self._access_key:
             raise ValueError(
                 "UNSPLASH_ACCESS_KEY not found in environment variables. "

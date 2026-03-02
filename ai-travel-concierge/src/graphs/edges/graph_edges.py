@@ -15,7 +15,7 @@ class GraphEdges:
     @staticmethod
     def route_by_intent(
         state: ConversationState
-    ) -> Literal["plan_trip", "recommend", "book", "answer_question", "clarify"]:
+    ) -> Literal["plan_trip", "recommend", "book", "answer_question", "clarify", "flight_search", "hotel_search", "weather_check", "country_info", "currency_conversion", "visa_requirement"]:
         """
         Route to the appropriate node based on classified intent.
         
@@ -40,6 +40,18 @@ class GraphEdges:
             return "answer_question"
         elif intent == "modify_itinerary":
             return "plan_trip"  # Re-run planner with modifications
+        elif intent == "search_flights":
+            return "flight_search"
+        elif intent == "search_hotels":
+            return "hotel_search"
+        elif intent == "check_weather":
+            return "weather_check"
+        elif intent == "get_country_info":
+            return "country_info"
+        elif intent == "convert_currency":
+            return "currency_conversion"
+        elif intent == "check_visa":
+            return "visa_requirement"
         else:
             # Default to answering questions
             return "answer_question"

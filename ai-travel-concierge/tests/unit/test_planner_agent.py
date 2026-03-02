@@ -57,7 +57,7 @@ class TestTravelPlannerAgent:
                 "output": "Day 1: Visit Louvre..."
             }
             
-            itinerary = await agent.create_itinerary(sample_state)
+            itinerary, raw_output = await agent.create_itinerary(sample_state)
             
             assert itinerary is not None
             assert len(itinerary) == 5  # 5 days

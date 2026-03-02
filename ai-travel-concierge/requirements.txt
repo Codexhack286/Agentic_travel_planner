@@ -6,7 +6,7 @@ langgraph==0.0.20
 langsmith==0.0.77
 
 # LLM Providers
-langchain-openai==0.0.5
+langchain-groq
 langchain-anthropic==0.1.1
 langchain-google-genai==0.0.5
 
