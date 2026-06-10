@@ -36,6 +36,24 @@ class Itinerary(TypedDict):
     notes: Optional[str]
 
 
+def merge_messages(left: List[Dict[str, str]], right: List[Dict[str, str]]) -> List[Dict[str, str]]:
+    """
+    Reducer function to merge messages without duplicating them.
+    If the right list is the full list including the left list (due to nodes returning full state),
+    we return the right list. Otherwise, we append right to left.
+    """
+    if not left:
+        return right or []
+    if not right:
+        return left or []
+        
+    # Check if right is the full messages list including left
+    if len(right) >= len(left) and right[:len(left)] == left:
+        return right
+        
+    return left + right
+
+
 class ConversationState(TypedDict):
     """
     Main state for the Travel Concierge conversation graph.
@@ -43,7 +61,7 @@ class ConversationState(TypedDict):
     This state is passed between nodes in the LangGraph workflow.
     """
     # Conversation tracking
-    messages: Annotated[List[Dict[str, str]], operator.add]
+    messages: Annotated[List[Dict[str, str]], merge_messages]
     current_intent: Optional[str]
     conversation_id: str
     

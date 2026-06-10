@@ -62,9 +62,14 @@ class GraphNodes:
         # Combine recent messages to track clarifications and context
         recent_messages = state["messages"][-5:]
         conversation_context = "\n".join([f"{msg['role']}: {msg['content']}" for msg in recent_messages])
-        
+
+        from datetime import datetime
+        current_date_str = datetime.now().strftime("%Y-%m-%d")
+
         prompt = f"""You are a travel assistant. 
         Analyze the conversation and extract the user's main intent and any provided travel details.
+        
+        Current Date: {current_date_str} (Use this to resolve relative dates or verify years).
         
         Conversation Context:
         {conversation_context}
@@ -82,6 +87,10 @@ class GraphNodes:
         - convert_currency
         - check_visa
         
+        Date Extraction Rules:
+        - Extract the travel start date. If the user provides dates in formats like 'DD-MM-YYYY' (e.g., '14-06-2026'), convert them to 'YYYY-MM-DD' (e.g., '2026-06-14').
+        - If the user provides a date range (e.g., 'from 14-06-2026 to 19-06-2026'), set 'start_date' as the first date ('2026-06-14') and compute the total days for 'duration_days' (e.g., 5).
+        
         Respond ONLY with a raw JSON object (no markdown, no backticks, no extra text) with this structure:
         {{
             "intent": "the_intent",
@@ -94,6 +103,7 @@ class GraphNodes:
         try:
             response = await self.llm.ainvoke(prompt)
             content = response.content.strip()
+            logger.info(f"LLM raw classify response: {content}")
             
             # Remove any markdown formatting if the LLM stubbornly adds it
             if content.startswith("```json"): content = content.replace("```json", "", 1)

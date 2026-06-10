@@ -39,24 +39,39 @@ async def generate_real_response(message: str, conversation_id: str) -> AsyncGen
     config = {"configurable": {"thread_id": conversation_id}}
     
     try:
-        # 2. Check existing checkpoint state
-        checkpoint_state = await graph.graph.aget_state(config)
-        checkpoint_messages = checkpoint_state.values.get("messages", []) if checkpoint_state.values else []
-        
-        # 3. Determine if we need to sync history or just pass new messages
-        if not checkpoint_messages:
-            # Checkpoint is empty (e.g. server restart or first message)
-            state = create_initial_state(user_id=conversation_id)
-            state["messages"] = db_msg_list
-            result_state = await graph.graph.ainvoke(state, config)
-        else:
-            # Checkpoint exists, determine suffix not yet in checkpoint
-            num_existing = len(checkpoint_messages)
-            new_messages = db_msg_list[num_existing:]
-            if new_messages:
-                result_state = await graph.graph.ainvoke({"messages": new_messages}, config)
+        async with graph.get_compiled_graph() as compiled_graph:
+            # 2. Check existing checkpoint state
+            checkpoint_state = await compiled_graph.aget_state(config)
+            checkpoint_messages = checkpoint_state.values.get("messages", []) if checkpoint_state.values else []
+            
+            # Check if checkpoint messages are out of sync with the database (e.g. database resets or edits)
+            is_out_of_sync = False
+            if checkpoint_messages:
+                if len(checkpoint_messages) > len(db_msg_list):
+                    is_out_of_sync = True
+                else:
+                    for i, msg in enumerate(checkpoint_messages):
+                        if db_msg_list[i]["role"] != msg["role"] or db_msg_list[i]["content"] != msg["content"]:
+                            is_out_of_sync = True
+                            break
+            
+            # 3. Determine if we need to sync history or just pass new messages
+            if not checkpoint_messages or is_out_of_sync:
+                # Checkpoint is empty or out of sync (e.g. database reset)
+                state = create_initial_state(user_id=conversation_id)
+                if is_out_of_sync and checkpoint_state.values:
+                    # Keep existing trip details and other state, just update messages
+                    state.update({k: v for k, v in checkpoint_state.values.items() if k != "messages"})
+                state["messages"] = db_msg_list
+                result_state = await compiled_graph.ainvoke(state, config)
             else:
-                result_state = checkpoint_state.values
+                # Checkpoint exists and is in sync, determine suffix not yet in checkpoint
+                num_existing = len(checkpoint_messages)
+                new_messages = db_msg_list[num_existing:]
+                if new_messages:
+                    result_state = await compiled_graph.ainvoke({"messages": new_messages}, config)
+                else:
+                    result_state = checkpoint_state.values
                 
         # 4. Extract assistant response
         assistant_messages = [

@@ -3,6 +3,7 @@ Main Travel Concierge LangGraph workflow definition.
 """
 import logging
 from typing import Dict, Any
+from contextlib import asynccontextmanager
 
 from pathlib import Path
 from langgraph.graph import StateGraph, END
@@ -33,56 +34,62 @@ class TravelConciergeGraph:
         self.config = config
         self.nodes = GraphNodes(config)
         self.edges = GraphEdges()
-        self.graph = self._build_graph()
+        self.workflow = self._build_workflow()
+        self.graph = self.workflow.compile(checkpointer=MemorySaver())
         
         logger.info("Travel Concierge Graph initialized")
     
-    def _get_checkpointer(self):
-        """Get database checkpointer (SqliteSaver or PostgresSaver) or fallback to MemorySaver."""
+    @asynccontextmanager
+    async def get_compiled_graph(self):
+        """
+        Yields a compiled graph with an active async checkpointer connection.
+        Properly manages the database connections using async context managers.
+        """
         db_url = self.config.get("database_url", "")
         
         # Check if database is Postgres
         if db_url and db_url.startswith("postgresql"):
             try:
-                from langgraph.checkpoint.postgres import PostgresSaver
-                from psycopg_pool import ConnectionPool
+                from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
                 
                 # Extract clean connection string for psycopg
                 conn_str = db_url.replace("+asyncpg", "")
                 
-                # Initialize connection pool
-                pool = ConnectionPool(conn_str, min_size=1, max_size=5)
-                logger.info("Using persistent Postgres checkpointer for LangGraph")
-                return PostgresSaver(pool)
+                logger.info("Initializing persistent AsyncPostgresSaver checkpointer")
+                async with AsyncPostgresSaver.from_conn_string(conn_str) as checkpointer:
+                    await checkpointer.setup()
+                    yield self.workflow.compile(checkpointer=checkpointer)
+                    return
             except Exception as e:
-                logger.error(f"Failed to initialize PostgresSaver: {e}. Falling back to MemorySaver.")
-                return MemorySaver()
+                logger.error(f"Failed to initialize AsyncPostgresSaver: {e}. Falling back to MemorySaver.")
+                yield self.graph
+                return
         else:
             # Use SQLite checkpointer locally
             try:
-                from langgraph.checkpoint.sqlite import SqliteSaver
-                import sqlite3
+                from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
                 
                 # Put checkpoints in the agent's data directory
                 persist_dir = self.config.get("chroma_persist_directory", "./data/vector_db")
                 db_path = Path(persist_dir).parent / "checkpoints.db"
                 db_path.parent.mkdir(exist_ok=True, parents=True)
                 
-                logger.info(f"Using persistent SQLite checkpointer at: {db_path}")
-                
-                # Initialize SqliteSaver
-                conn = sqlite3.connect(str(db_path), check_same_thread=False)
-                return SqliteSaver(conn)
+                logger.info(f"Using persistent AsyncSqliteSaver at: {db_path}")
+                async with AsyncSqliteSaver.from_conn_string(str(db_path)) as checkpointer:
+                    await checkpointer.setup()
+                    yield self.workflow.compile(checkpointer=checkpointer)
+                    return
             except Exception as e:
-                logger.error(f"Failed to initialize SqliteSaver: {e}. Falling back to MemorySaver.")
-                return MemorySaver()
+                logger.error(f"Failed to initialize AsyncSqliteSaver: {e}. Falling back to MemorySaver.")
+                yield self.graph
+                return
     
-    def _build_graph(self) -> StateGraph:
+    def _build_workflow(self) -> StateGraph:
         """
-        Build the LangGraph workflow.
+        Build the LangGraph workflow structure.
         
         Returns:
-            Compiled StateGraph ready for execution
+            StateGraph ready for compilation
         """
         # Create the graph
         workflow = StateGraph(ConversationState)
@@ -161,12 +168,8 @@ class TravelConciergeGraph:
         # After clarification, end execution to wait for user's response
         workflow.add_edge("clarify", END)
         
-        # Compile the graph with persistent memory
-        checkpointer = self._get_checkpointer()
-        compiled_graph = workflow.compile(checkpointer=checkpointer)
-        
-        logger.info("Graph workflow compiled successfully")
-        return compiled_graph
+        logger.info("Graph workflow structure built successfully")
+        return workflow
     
     def _check_info_node(self, state: ConversationState) -> ConversationState:
         """
@@ -213,7 +216,8 @@ class TravelConciergeGraph:
         config = {"configurable": {"thread_id": state["conversation_id"]}}
         
         try:
-            result = await self.graph.ainvoke(state, config)
+            async with self.get_compiled_graph() as compiled_graph:
+                result = await compiled_graph.ainvoke(state, config)
             
             # Extract assistant's response
             assistant_messages = [

@@ -52,10 +52,10 @@ export function MessageBubble({
       >
         <div
           className={cn(
-            "rounded-2xl px-4 py-2.5",
+            "rounded-2xl px-4 py-2.5 transition-all duration-200",
             isUser
-              ? "bg-primary text-primary-foreground"
-              : "bg-card border shadow-sm"
+              ? "bg-gradient-to-br from-primary via-primary/95 to-primary/80 text-primary-foreground shadow-sm shadow-primary/5 border border-primary/10"
+              : "bg-card border border-border border-l-2 border-l-accent shadow-sm"
           )}
         >
           <div

@@ -53,10 +53,10 @@ export function ConversationItem({
   return (
     <div
       className={cn(
-        "group flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors cursor-pointer",
+        "group flex items-center gap-2 rounded-lg py-2.5 transition-all cursor-pointer relative duration-200",
         isActive
-          ? "bg-primary/10 text-primary"
-          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+          ? "bg-primary/[0.08] text-primary border-l-2 border-l-primary rounded-l-none pl-2.5 font-semibold"
+          : "text-muted-foreground hover:bg-muted/50 hover:text-foreground pl-3 border-l-2 border-l-transparent"
       )}
       onClick={!isEditing ? onSelect : undefined}
       role="button"
@@ -65,7 +65,7 @@ export function ConversationItem({
         if (e.key === "Enter" && !isEditing) onSelect();
       }}
     >
-      <MessageSquare className="h-4 w-4 shrink-0" />
+      <MessageSquare className={cn("h-4 w-4 shrink-0 transition-transform duration-200 group-hover:scale-110", isActive ? "text-primary" : "text-muted-foreground/60")} />
 
       {isEditing ? (
         <Input
@@ -80,15 +80,15 @@ export function ConversationItem({
               setIsEditing(false);
             }
           }}
-          className="h-6 px-1 py-0 text-sm"
+          className="h-6 px-1 py-0 text-sm focus-visible:ring-1"
           onClick={(e) => e.stopPropagation()}
         />
       ) : (
         <div className="flex-1 truncate">
-          <p className="truncate font-medium">
+          <p className={cn("truncate text-sm font-medium", isActive ? "text-foreground font-semibold" : "text-foreground/90")}>
             {conversation.title || "New Chat"}
           </p>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-[11px] text-muted-foreground/85 mt-0.5">
             {formatRelativeDate(conversation.updatedAt)}
           </p>
         </div>
