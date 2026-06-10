@@ -100,7 +100,7 @@ class VisaRequirementTool(BaseTravelAPITool):
 
         response = await self._make_request(
             "POST",
-            f"{self.BASE_URL}/check",
+            f"{self.BASE_URL}/v2/visa/check",
             json={"passport": from_country, "destination": to_country},
             headers=headers,
         )

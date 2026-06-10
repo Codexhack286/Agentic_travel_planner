@@ -13,7 +13,7 @@ An intelligent travel planning assistant that helps users find flights, hotels, 
 | **Full-Stack Developer** | Frontend UI + Backend API + Database | ✅ **COMPLETE** |
 | **Agent Architect** | LangGraph multi-agent system | ✅ **COMPLETE** |
 | **API Integration Engineer** | 6 travel APIs (flights, hotels, weather, etc.) | ✅ **COMPLETE** |
-| **DevOps & Quality Engineer** | Docker, CI/CD, production deployment | 🚧 Pending |
+| **DevOps & Quality Engineer** | Docker, CI/CD, production deployment | ✅ **COMPLETE** |
 
 ## Tech Stack
 
@@ -187,9 +187,50 @@ Agentic_travel_planner/
   - Attractions (Google Places)
   - Itinerary planning (custom logic)
 
-### Pending 🚧
+### Complete ✅
 
-- **Production Deployment**: Docker, CI/CD, monitoring (DevOps Engineer)
+- **Production Deployment**: Dockerfiles, root-level docker-compose, named volumes, and multi-stage Next.js builds.
+
+## Relational DB & LangGraph Checkpointer Persistence
+
+Voyager AI maintains state across server restarts and scaled instances using two layers of database persistence:
+
+1. **Relational Database (FastAPI/SQLAlchemy)**:
+   - Stores user profiles, conversations, and full message histories.
+   - Defaults to local SQLite (`backend/backend.db`) and connects to **Neon PostgreSQL** in production.
+   - Automatically initializes and creates database tables on startup.
+   
+2. **LangGraph Checkpointer (State Memory)**:
+   - Tracks intermediate agent node executions, compiled user preferences, and RAG context states.
+   - Swaps checkpointer backends dynamically:
+     - **Local**: Uses SQLite checkpointer saving states to `ai-travel-concierge/data/checkpoints.db`.
+     - **Production**: Uses Postgres checkpointer pool connections against Neon SQL serverless database.
+   - Active memory playback automatically loads historical messages from the database on a new request, recovering state from thread checkpoints seamlessly.
+
+## Docker & Container Deployment
+
+You can build and deploy the complete application (Next.js frontend + FastAPI backend + agent system) in a fully isolated container environment.
+
+### Prerequisites
+- Docker and Docker Compose installed.
+
+### Setup and Running
+1. Verify you have a `.env` file at the root of the workspace containing the necessary API keys (`GROQ_API_KEY`, `AMADEUS_API_KEY`, etc.).
+2. Run the Docker Compose build and startup command:
+   ```bash
+   docker compose up --build -d
+   ```
+3. Docker will build:
+   - The **Backend container** (FastAPI and the LangGraph agent) exposing port `8000`.
+   - The **Frontend container** (Next.js Web app) exposing port `3000`.
+4. Access the web interface at **http://localhost:3000** and the interactive API docs at **http://localhost:8000/docs**.
+
+### Database Seeding and Initialization
+To reset the vector databases and seed initial travel knowledge in your local development environment:
+```bash
+cd ai-travel-concierge
+uv run python scripts/reset_and_init.py
+```
 
 ## Development Workflow
 

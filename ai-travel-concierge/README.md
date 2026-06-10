@@ -33,20 +33,32 @@ ai-travel-concierge/
 
 ## Setup
 
+Using `uv` package manager (recommended):
+
 ```bash
-# Install dependencies
-pip install -r requirements.txt
+# Sync dependencies in the virtual environment
+uv sync
 
 # Set up environment variables
 cp .env.example .env
-# Edit .env with your API keys
+# Edit .env with your API keys (or use the workspace root .env)
 
-# Initialize vector database
-python scripts/init_vectordb.py
+# Run the API verification script to verify keys and database access
+uv run python scripts/test_keys.py
 
-# Run the application
-python src/main.py
+# Reset and seed the vector database
+uv run python scripts/reset_and_init.py
+
+# Run the command line agent interface (CLI)
+uv run python src/main.py --cli
 ```
+
+## Relational DB & LangGraph Checkpointers
+
+The agent is stateful and uses a dual-persistence strategy:
+1. **Dynamic Path Resolution**: Config file resolver converts any relative path settings (like `chroma_persist_directory`) into absolute paths relative to the agent folder root. This prevents relative path mismatches between backend service invocations, tests, and CLI runs.
+2. **SQLite Checkpointer (Local)**: When running locally, conversation states are written to `ai-travel-concierge/data/checkpoints.db` automatically using `SqliteSaver`.
+3. **PostgreSQL Checkpointer (Production)**: When configured with a PostgreSQL URL, the graph automatically switches to `PostgresSaver` and uses a connection pool (`ConnectionPool`) for multi-worker support.
 
 ## Key Components
 

@@ -1,0 +1,43 @@
+# Version Control
+.git
+.gitignore
+
+# Virtual Environments
+venv/
+env/
+.venv/
+
+# Node Modules and Builds
+node_modules/
+.next/
+out/
+build/
+dist/
+
+# Python Cache and Coverage
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Local database, checkpoints and caches
+*.db
+*.sqlite
+*.sqlite3
+data/vector_db/
+data/cache/
+checkpoints.db
+
+# System files
+.DS_Store
+Thumbs.db
+
+# IDE and Editor configs
+.vscode/
+.idea/
+*.swp
+*.swo

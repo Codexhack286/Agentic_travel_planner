@@ -4,6 +4,7 @@ Main Travel Concierge LangGraph workflow definition.
 import logging
 from typing import Dict, Any
 
+from pathlib import Path
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
 
@@ -35,6 +36,46 @@ class TravelConciergeGraph:
         self.graph = self._build_graph()
         
         logger.info("Travel Concierge Graph initialized")
+    
+    def _get_checkpointer(self):
+        """Get database checkpointer (SqliteSaver or PostgresSaver) or fallback to MemorySaver."""
+        db_url = self.config.get("database_url", "")
+        
+        # Check if database is Postgres
+        if db_url and db_url.startswith("postgresql"):
+            try:
+                from langgraph.checkpoint.postgres import PostgresSaver
+                from psycopg_pool import ConnectionPool
+                
+                # Extract clean connection string for psycopg
+                conn_str = db_url.replace("+asyncpg", "")
+                
+                # Initialize connection pool
+                pool = ConnectionPool(conn_str, min_size=1, max_size=5)
+                logger.info("Using persistent Postgres checkpointer for LangGraph")
+                return PostgresSaver(pool)
+            except Exception as e:
+                logger.error(f"Failed to initialize PostgresSaver: {e}. Falling back to MemorySaver.")
+                return MemorySaver()
+        else:
+            # Use SQLite checkpointer locally
+            try:
+                from langgraph.checkpoint.sqlite import SqliteSaver
+                import sqlite3
+                
+                # Put checkpoints in the agent's data directory
+                persist_dir = self.config.get("chroma_persist_directory", "./data/vector_db")
+                db_path = Path(persist_dir).parent / "checkpoints.db"
+                db_path.parent.mkdir(exist_ok=True, parents=True)
+                
+                logger.info(f"Using persistent SQLite checkpointer at: {db_path}")
+                
+                # Initialize SqliteSaver
+                conn = sqlite3.connect(str(db_path), check_same_thread=False)
+                return SqliteSaver(conn)
+            except Exception as e:
+                logger.error(f"Failed to initialize SqliteSaver: {e}. Falling back to MemorySaver.")
+                return MemorySaver()
     
     def _build_graph(self) -> StateGraph:
         """
@@ -120,9 +161,9 @@ class TravelConciergeGraph:
         # After clarification, end execution to wait for user's response
         workflow.add_edge("clarify", END)
         
-        # Compile the graph with memory
-        memory = MemorySaver()
-        compiled_graph = workflow.compile(checkpointer=memory)
+        # Compile the graph with persistent memory
+        checkpointer = self._get_checkpointer()
+        compiled_graph = workflow.compile(checkpointer=checkpointer)
         
         logger.info("Graph workflow compiled successfully")
         return compiled_graph

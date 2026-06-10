@@ -54,6 +54,9 @@ logs/
 *.db
 *.sqlite
 *.sqlite3
+checkpoints.db
+**/checkpoints.db
+**/backend.db
 
 # Vector Store
 data/vector_db/

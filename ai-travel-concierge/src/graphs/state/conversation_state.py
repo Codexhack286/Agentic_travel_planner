@@ -76,6 +76,9 @@ class ConversationState(TypedDict):
     needs_more_info: bool
     ready_to_book: bool
     conversation_complete: bool
+    
+    # Tool output mapping
+    current_tool_result: Optional[Dict[str, Any]]
 
 
 def create_initial_state(user_id: Optional[str] = None) -> ConversationState:
@@ -111,5 +114,6 @@ def create_initial_state(user_id: Optional[str] = None) -> ConversationState:
         retry_count=0,
         needs_more_info=False,
         ready_to_book=False,
-        conversation_complete=False
+        conversation_complete=False,
+        current_tool_result=None
     )

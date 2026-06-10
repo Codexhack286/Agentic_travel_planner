@@ -7,7 +7,7 @@ integrated caching, rate limiting, error handling, and response normalization.
 import asyncio
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional, Type
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 import httpx
 from tenacity import (
     retry,
@@ -31,8 +31,7 @@ class APIResponse(BaseModel):
     source: str
     cached: bool = False
     
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class BaseTravelAPITool(BaseTool, ABC):
@@ -93,7 +92,9 @@ class BaseTravelAPITool(BaseTool, ABC):
     
     def _get_cache_ttl(self) -> int:
         """Get cache TTL for this tool type."""
-        return CACHE_TTL.get(self.cache_prefix, 3600)
+        if isinstance(CACHE_TTL, dict):
+            return CACHE_TTL.get(self.cache_prefix, 3600)
+        return CACHE_TTL
     
     async def _check_cache(self, **params) -> Optional[Dict[str, Any]]:
         """

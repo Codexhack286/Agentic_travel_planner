@@ -2,6 +2,7 @@
 """
 Initialize vector database with sample travel data.
 """
+import asyncio
 import logging
 from pathlib import Path
 
@@ -109,7 +110,7 @@ def load_sample_data():
     return sample_destinations
 
 
-def initialize_vector_db():
+async def initialize_vector_db():
     """Initialize the vector database with sample data."""
     
     logger.info("Starting vector database initialization...")
@@ -137,7 +138,7 @@ def initialize_vector_db():
         # Test retrieval
         logger.info("Testing retrieval...")
         test_query = "I want to visit a city with great food and culture"
-        results = retriever.retrieve(query=test_query, k=3)
+        results = await retriever.retrieve(query=test_query, k=3)
         
         logger.info(f"Test query returned {len(results)} results")
         for i, doc in enumerate(results, 1):
@@ -155,4 +156,4 @@ def initialize_vector_db():
 
 
 if __name__ == "__main__":
-    initialize_vector_db()
+    asyncio.run(initialize_vector_db())

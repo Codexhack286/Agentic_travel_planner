@@ -17,9 +17,17 @@ from src.tools.external_apis.weather_tools import WeatherForecastTool
 from src.tools.external_apis.country_tools import CountryInfoTool
 from src.tools.external_apis.currency_tools import CurrencyConversionTool
 from src.tools.external_apis.visa_tools import VisaRequirementTool
-from src.tools.external_apis.image_tools import UnsplashImageTool
+from src.tools.external_apis.image_tools import UnsplashImageTool, format_unsplash_attribution
 
 logger = logging.getLogger(__name__)
+
+
+def get_flag_emoji(country_code: str) -> str:
+    """Convert a 2-letter country code to regional flag emoji."""
+    if not country_code or len(country_code) != 2:
+        return "📍"
+    base = 127397
+    return chr(ord(country_code[0].upper()) + base) + chr(ord(country_code[1].upper()) + base)
 
 
 class GraphNodes:
@@ -105,7 +113,6 @@ class GraphNodes:
             if data.get("destination"):
                 state["trip_details"]["destination"] = str(data["destination"])
             if data.get("start_date"):
-                # Simplification: store directly as string for now instead of datetime object parsing rules
                 state["trip_details"]["start_date"] = str(data["start_date"])
             if data.get("duration_days") is not None:
                 try:
@@ -115,8 +122,9 @@ class GraphNodes:
             if data.get("budget"):
                 state["user_preferences"]["budget"] = str(data["budget"])
                 
-            # Reset needs_more_info so the check_info node can accurately re-verify
+            # Reset needs_more_info and current_tool_result for the new turn
             state["needs_more_info"] = False
+            state["current_tool_result"] = None
             
         except Exception as e:
             logger.error(f"Failed to parse intent/entities from LLM: {e}")
@@ -264,10 +272,7 @@ class GraphNodes:
         
         Respond with a JSON object containing these keys."""
         
-        # Simulating extraction... in a real app, use structured output parsing
         try:
-            # Simple assumption for demo: The planner Agent or LLM parsed it, or we extract parameters roughly.
-            # To keep things robust, we use the tool's arg schema via LLM structured generation
             function_call = await self.llm.bind_tools([self.flight_tool]).ainvoke(
                 [HumanMessage(content=prompt)]
             )
@@ -276,6 +281,31 @@ class GraphNodes:
                 kwargs = function_call.tool_calls[0]["args"]
                 flight_results = await self.flight_tool._call_api(**kwargs)
                 normalized = self.flight_tool._normalize_response(flight_results)
+                
+                # Format to schema expected by FlightCard
+                flights_data = []
+                for f in normalized.get("flights", []):
+                    itineraries = f.get("itineraries", [])
+                    first_seg = itineraries[0].get("segments", [{}])[0] if itineraries else {}
+                    flights_data.append({
+                        "airline": first_seg.get("airline", "Unknown"),
+                        "flightNumber": first_seg.get("flight_number", "N/A"),
+                        "departure": first_seg.get("departure_time"),
+                        "arrival": first_seg.get("arrival_time"),
+                        "duration": itineraries[0].get("duration") if itineraries else "N/A",
+                        "stops": len(itineraries[0].get("segments", [])) - 1 if itineraries else 0,
+                        "price": {"amount": f.get("price"), "currency": f.get("currency", "USD")}
+                    })
+                
+                state["current_tool_result"] = {
+                    "type": "flight",
+                    "data": {
+                        "origin": kwargs.get("origin", "").upper(),
+                        "destination": kwargs.get("destination", "").upper(),
+                        "departureDate": kwargs.get("departure_date"),
+                        "flights": flights_data
+                    }
+                }
                 
                 state["messages"].append({
                     "role": "assistant",
@@ -305,6 +335,40 @@ class GraphNodes:
                 kwargs = function_call.tool_calls[0]["args"]
                 hotel_results = await self.hotel_tool._call_api(**kwargs)
                 normalized = self.hotel_tool._normalize_response(hotel_results)
+                
+                # Format to schema expected by HotelCard
+                hotels_data = []
+                for h in normalized.get("hotels", []):
+                    try:
+                        rating_val = int(h.get("rating")) if h.get("rating") else 3
+                    except ValueError:
+                        rating_val = 3
+                    rating_val = max(1, min(5, rating_val))
+                    
+                    try:
+                        amount_val = float(h.get("price", {}).get("per_night") or h.get("price", {}).get("total") or 0.0)
+                    except ValueError:
+                        amount_val = 0.0
+                        
+                    hotels_data.append({
+                        "name": h.get("name", "Unknown Hotel"),
+                        "rating": rating_val,
+                        "pricePerNight": {
+                            "amount": amount_val,
+                            "currency": h.get("price", {}).get("currency", "USD")
+                        }
+                    })
+                
+                state["current_tool_result"] = {
+                    "type": "hotel",
+                    "data": {
+                        "destination": kwargs.get("city_code", "Destination").upper(),
+                        "checkIn": kwargs.get("check_in"),
+                        "checkOut": kwargs.get("check_out"),
+                        "hotels": hotels_data
+                    }
+                }
+                
                 state["messages"].append({
                     "role": "assistant",
                     "content": f"I found {normalized.get('count', 0)} hotel options for you."
@@ -329,6 +393,45 @@ class GraphNodes:
                 kwargs = function_call.tool_calls[0]["args"]
                 weather_results = await self.weather_tool._call_api(**kwargs)
                 normalized = self.weather_tool._normalize_response(weather_results)
+                
+                def get_weather_icon(code: int) -> str:
+                    if code == 0: return "☀️"
+                    elif code in [1, 2]: return "⛅"
+                    elif code == 3: return "☁️"
+                    elif code in [45, 48]: return "🌫️"
+                    elif code in [51, 53, 55, 61, 63, 65, 80, 81, 82]: return "🌧️"
+                    elif code in [71, 73, 75, 77, 85, 86]: return "❄️"
+                    elif code in [95, 96, 99]: return "⛈️"
+                    return "🌡️"
+                
+                unit_val = normalized.get("unit", "celsius").lower()
+                if "°c" in unit_val: unit_val = "celsius"
+                if "°f" in unit_val: unit_val = "fahrenheit"
+                
+                forecast_data = []
+                for f in normalized.get("forecast", []):
+                    forecast_data.append({
+                        "date": f.get("date"),
+                        "high": f.get("high"),
+                        "low": f.get("low"),
+                        "condition": f.get("condition"),
+                        "icon": get_weather_icon(f.get("weather_code", 0))
+                    })
+                
+                state["current_tool_result"] = {
+                    "type": "weather",
+                    "data": {
+                        "location": normalized.get("location"),
+                        "unit": unit_val,
+                        "current": {
+                            "temp": normalized.get("current", {}).get("temperature"),
+                            "condition": normalized.get("current", {}).get("condition"),
+                            "icon": get_weather_icon(normalized.get("current", {}).get("weather_code", 0))
+                        },
+                        "forecast": forecast_data
+                    }
+                }
+                
                 state["messages"].append({"role": "assistant", "content": f"Here is the weather forecast for {kwargs.get('destination')}."})
             else:
                 state["messages"].append({"role": "assistant", "content": "Could you specify the destination and dates for the weather forecast?"})
@@ -350,7 +453,43 @@ class GraphNodes:
                 kwargs = function_call.tool_calls[0]["args"]
                 info = await self.country_tool._call_api(**kwargs)
                 normalized = self.country_tool._normalize_response(info)
-                state["messages"].append({"role": "assistant", "content": f"Country Information: {normalized.get('name', {}).get('common')}."})
+                
+                common_name = normalized.get("name", {}).get("common", "")
+                image_url = None
+                image_attr = None
+                try:
+                    image_results = await self.image_tool._call_api(query=f"{common_name} skyline landmark", per_page=1)
+                    norm_images = self.image_tool._normalize_response(image_results)
+                    if norm_images.get("returned_count", 0) > 0:
+                        img = norm_images["images"][0]
+                        image_url = img.get("urls", {}).get("regular")
+                        image_attr = format_unsplash_attribution(img)
+                except Exception as img_err:
+                    logger.error(f"Failed to fetch unsplash image: {img_err}")
+                
+                cca2 = normalized.get("codes", {}).get("iso_alpha_2", "US")
+                flag_emoji = get_flag_emoji(cca2)
+                curr_info = normalized.get("primary_currency", {"name": "USD", "symbol": "$"})
+                
+                state["current_tool_result"] = {
+                    "type": "destination",
+                    "data": {
+                        "name": common_name,
+                        "flag": flag_emoji,
+                        "capital": normalized.get("capital", "N/A"),
+                        "imageUrl": image_url,
+                        "imageAttribution": image_attr,
+                        "language": normalized.get("languages", []),
+                        "timezone": normalized.get("timezones", []),
+                        "currency": {
+                            "name": curr_info.get("name", "Unknown"),
+                            "symbol": curr_info.get("symbol", "")
+                        },
+                        "population": normalized.get("population", 0)
+                    }
+                }
+                
+                state["messages"].append({"role": "assistant", "content": f"Country Information: {common_name}."})
         except Exception as e:
             logger.error(f"Country info error: {e}")
             state["messages"].append({"role": "assistant", "content": "Failed to retrieve country information."})
@@ -369,6 +508,19 @@ class GraphNodes:
                 kwargs = function_call.tool_calls[0]["args"]
                 result = await self.currency_tool._call_api(**kwargs)
                 normalized = self.currency_tool._normalize_response(result)
+                
+                state["current_tool_result"] = {
+                    "type": "currency",
+                    "data": {
+                        "from": normalized.get("original_currency"),
+                        "to": normalized.get("converted_currency"),
+                        "amount": normalized.get("original_amount"),
+                        "convertedAmount": normalized.get("converted_amount"),
+                        "rate": normalized.get("exchange_rate"),
+                        "lastUpdated": normalized.get("rate_date")
+                    }
+                }
+                
                 state["messages"].append({"role": "assistant", "content": f"Currency Conversion: {normalized.get('formula')}"})
         except Exception as e:
             logger.error(f"Currency error: {e}")
@@ -388,6 +540,24 @@ class GraphNodes:
                 kwargs = function_call.tool_calls[0]["args"]
                 result = await self.visa_tool._call_api(**kwargs)
                 normalized = self.visa_tool._normalize_response(result)
+                
+                visa_req = normalized.get("category", "visa_required").lower().replace("_", "-")
+                if visa_req == "evisa":
+                    visa_req = "e-visa"
+                if visa_req not in ["visa-free", "visa-on-arrival", "e-visa", "visa-required"]:
+                    visa_req = "visa-required"
+                
+                state["current_tool_result"] = {
+                    "type": "visa",
+                    "data": {
+                        "from": normalized.get("from_country"),
+                        "to": normalized.get("to_country"),
+                        "requirement": visa_req,
+                        "duration": f"{normalized.get('duration')} days" if normalized.get("duration") else None,
+                        "notes": normalized.get("summary")
+                    }
+                }
+                
                 state["messages"].append({"role": "assistant", "content": f"Visa Requirement: {normalized.get('summary')}"})
         except Exception as e:
             logger.error(f"Visa check error: {e}")

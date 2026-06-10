@@ -5,7 +5,7 @@ import os
 from typing import Dict, Any
 from pathlib import Path
 
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from dotenv import load_dotenv
 
 
@@ -60,11 +60,12 @@ class Settings(BaseSettings):
     debug: bool = False
     log_level: str = "INFO"
     
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
-        extra = "ignore"
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore"
+    )
 
 
 def load_config() -> Dict[str, Any]:
@@ -84,6 +85,12 @@ def load_config() -> Dict[str, Any]:
     
     # Convert to dictionary
     config = settings.model_dump()
+    
+    # Resolve relative chroma_persist_directory to an absolute path relative to agent root
+    agent_root = Path(__file__).parent.parent.parent.resolve()
+    chroma_path = Path(config["chroma_persist_directory"])
+    if not chroma_path.is_absolute():
+        config["chroma_persist_directory"] = str((agent_root / chroma_path).resolve())
     
     # Set environment variables for LangChain
     if config.get("langchain_tracing_v2"):

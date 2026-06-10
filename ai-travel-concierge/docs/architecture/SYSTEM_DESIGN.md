@@ -121,13 +121,13 @@ Integration with external services:
 
 ### Core Framework
 - **LangChain**: Agent framework and tool integration
-- **LangGraph**: Stateful workflow orchestration
-- **OpenAI GPT-4**: Primary LLM
+- **LangGraph**: Stateful workflow orchestration with checkpointer support
+- **Groq Chat Model**: Llama-based chat model endpoint with `openai/gpt-oss-120b` as primary LLM
 
 ### Storage
-- **ChromaDB**: Vector database
-- **SQLite/PostgreSQL**: Relational data
-- **Redis**: Caching and session management
+- **ChromaDB**: Local vector database with automatic absolute path resolving logic to prevent relative run failures
+- **Relational Databases**: SQLite locally (`backend.db`), transitioning to PostgreSQL (Neon) in production
+- **LangGraph Checkpointer**: `SqliteSaver` locally (`checkpoints.db`), transitioning to `PostgresSaver` with connection pooling in production for stateless active state persistence
 
 ### APIs
 - **OpenAI**: LLM and embeddings
@@ -150,14 +150,16 @@ External knowledge retrieval augments LLM responses.
 Agents use structured tools for external API calls.
 
 ### 5. Memory Pattern
-Persistent and ephemeral memory for context management.
+- **Conversational Memory**: Relational SQL tables storing complete query/response messages
+- **LangGraph Checkpoint Memory**: Persistent sqlite/postgres saver checkpointer that tracks graph node checkpoints, compiled user preferences, and internal routing states across requests
+- **Active Memory Playback**: Lifespan startup or request hook parses previous messages from the database and checks thread checkpoint states to seamlessly resume active conversation memory
 
 ## Scalability Considerations
 
 ### Horizontal Scaling
-- Stateless agent execution
-- Distributed vector store (Pinecone/Weaviate for production)
-- Load-balanced API calls
+- **Stateless API Host**: FastAPI backend instances can scale horizontally behind load balancers with zero server affinity
+- **Centralized Checkpointing**: Multi-instance servers leverage PostgreSQL pool-based checkpoints (`PostgresSaver`) to share user execution states dynamically
+- **Serverless PostgreSQL**: Neon cluster automatically manages database capacity and scales compute threads independently
 
 ### Caching
 - Redis for frequent queries

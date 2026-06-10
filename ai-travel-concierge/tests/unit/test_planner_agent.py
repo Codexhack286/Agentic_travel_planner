@@ -2,7 +2,7 @@
 Unit tests for Travel Planner Agent.
 """
 import pytest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, patch, AsyncMock
 from datetime import datetime, timedelta
 
 from src.agents.travel_planner.planner_agent import TravelPlannerAgent
@@ -13,7 +13,7 @@ from src.graphs.state.conversation_state import ConversationState, create_initia
 def config():
     """Test configuration."""
     return {
-        "model_name": "gpt-4-turbo-preview",
+        "model_name": "openai/gpt-oss-120b",
         "temperature": 0.7,
         "openai_api_key": "test-key"
     }
@@ -52,7 +52,7 @@ class TestTravelPlannerAgent:
         """Test itinerary creation."""
         agent = TravelPlannerAgent(config)
         
-        with patch.object(agent.agent, 'ainvoke') as mock_invoke:
+        with patch('src.agents.travel_planner.planner_agent.AgentExecutor.ainvoke', new_callable=AsyncMock) as mock_invoke:
             mock_invoke.return_value = {
                 "output": "Day 1: Visit Louvre..."
             }
